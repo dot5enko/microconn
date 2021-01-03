@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/streadway/amqp"
 	"log"
-	"runtime"
 	"strconv"
 	"time"
 )
@@ -42,68 +41,16 @@ type mq struct {
 	ch   *amqp.Channel
 }
 
+func (r mq) Me() string {
+	return r.me
+}
+
 func NewMq(consumerName string) mq {
 	mq := mq{
 		me: consumerName,
 	}
 
 	return mq
-}
-
-func main() {
-
-	conf := ConfigStruct{
-		Rabbitmq: RabbitmqStruct{
-			Host:     "localhost",
-			Port:     5672,
-			Login:    "guest",
-			Password: "guest",
-		},
-		Database:     DatabaseConfig{},
-		QueueName:    "",
-		ExchangeName: "test",
-	}
-
-	go func() {
-		rmq := NewMq("bob")
-
-		err, msgs := rmq.Start(conf)
-		if err != nil {
-			fmt.Println(err.Error())
-		}
-
-		for msg := range msgs {
-
-			fmt.Printf("[%s] Got a message in --> %s from %s\n", rmq.me, string(msg.Content), msg.Raw.ReplyTo)
-			rmq.Send(msg.Raw.ReplyTo,MqMessage{Content: []byte("hi, this is response")})
-		}
-	}()
-
-	go func() {
-		rmq := NewMq("alice")
-
-		err, msgs := rmq.Start(conf)
-		if err != nil {
-			fmt.Println(err.Error())
-		}
-
-		go func() {
-			for {
-				rmq.Send("bob", MqMessage{Content: []byte("hola")})
-				time.Sleep(time.Second * 5)
-			}
-		}()
-
-		for msg := range msgs {
-			fmt.Printf("[%s] Got a message in --> %s from %s\n", rmq.me, string(msg.Content),msg.Raw.ReplyTo)
-		}
-	}()
-
-	for {
-		runtime.Gosched()
-		time.Sleep(time.Millisecond * 100)
-	}
-
 }
 
 type MqMessage struct {
