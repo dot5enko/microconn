@@ -1,4 +1,4 @@
-module microconn
+module github.com/dot5enko/microconn
 
 go 1.15
 
