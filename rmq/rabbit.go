@@ -39,6 +39,8 @@ type mq struct {
 	me   string
 	conn *amqp.Connection
 	ch   *amqp.Channel
+
+	sendChannel chan MqMessage
 }
 
 func (r mq) Me() string {
@@ -47,27 +49,31 @@ func (r mq) Me() string {
 
 func NewMq(consumerName string) mq {
 	mq := mq{
-		me: consumerName,
+		me:          consumerName,
+		sendChannel: make(chan MqMessage, 1),
 	}
 
 	return mq
 }
 
 type MqMessage struct {
+	Dest    string
 	Content []byte
 	Raw     *amqp.Delivery
 }
 
-func (mq mq) Send(dest string, message MqMessage) {
+func (mq mq) Send(message MqMessage) {
+	mq.sendChannel <- message
+}
+
+func (mq mq) sendInternal(message MqMessage) error {
 
 	var pub amqp.Publishing
 	pub.Body = message.Content
 	pub.ReplyTo = mq.me
 
-	result := mq.ch.Publish(dest, "", true, false, pub)
-	if result != nil {
-		log.Printf("Got an exception while sending message to queue :%s\n", result.Error())
-	}
+	result := mq.ch.Publish(message.Dest, "", true, false, pub)
+	return result
 }
 
 func (mq *mq) Start(conf ConfigStruct) (error, chan MqMessage) {
@@ -131,6 +137,9 @@ func (mq *mq) Start(conf ConfigStruct) (error, chan MqMessage) {
 	result := make(chan MqMessage, 10)
 
 	go func() {
+
+		fmt.Printf("mq receive routine started\n")
+
 		for d := range msgs {
 
 			result <- MqMessage{
@@ -147,7 +156,14 @@ func (mq *mq) Start(conf ConfigStruct) (error, chan MqMessage) {
 		}
 	}()
 
-	log.Printf("End listening for logs\n")
+	// send routine
+	go func() {
+		fmt.Printf("mq send routine started\n")
+		for msg := range mq.sendChannel {
+			mq.sendInternal(msg)
+		}
+	}()
+
 	return nil, result
 }
 

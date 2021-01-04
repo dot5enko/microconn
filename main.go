@@ -32,7 +32,7 @@ func main() {
 		for msg := range msgs {
 
 			fmt.Printf("[%s] Got a message in --> %s from %s\n", rmqVal.Me(), string(msg.Content), msg.Raw.ReplyTo)
-			rmqVal.Send(msg.Raw.ReplyTo,rmq.MqMessage{Content: []byte("hi, this is response")})
+			rmqVal.Send(rmq.MqMessage{Dest: msg.Raw.ReplyTo, Content: []byte("hi, this is response")})
 		}
 	}()
 
@@ -46,13 +46,13 @@ func main() {
 
 		go func() {
 			for {
-				rmqVal.Send("bob", rmq.MqMessage{Content: []byte("hola")})
+				rmqVal.Send(rmq.MqMessage{Dest: "bob", Content: []byte("hola0")})
 				time.Sleep(time.Second * 5)
 			}
 		}()
 
 		for msg := range msgs {
-			fmt.Printf("[%s] Got a message in --> %s from %s\n", rmqVal.Me(), string(msg.Content),msg.Raw.ReplyTo)
+			fmt.Printf("[%s] Got a message in --> %s from %s\n", rmqVal.Me(), string(msg.Content), msg.Raw.ReplyTo)
 		}
 	}()
 
