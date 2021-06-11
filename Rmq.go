@@ -32,6 +32,10 @@ type RmqConfig struct {
 
 type DeliveryChannelHandler func(delivery <-chan amqp.Delivery)
 
+func (receiver *Rmq) RawHandle() *amqp.Connection {
+	return receiver.amqp;
+}
+
 func (receiver *Rmq) Connect(config RmqConfig) error {
 	receiver.config = config
 
