@@ -36,6 +36,10 @@ func (receiver *Rmq) RawHandle() *amqp.Connection {
 	return receiver.amqp;
 }
 
+func (receiver *Rmq) RawChannel() *amqp.Channel {
+	return receiver.channel;
+}
+
 func (receiver *Rmq) Connect(config RmqConfig) error {
 	receiver.config = config
 
