@@ -1,10 +1,9 @@
 package microconn
 
 import (
-	"github.com/streadway/amqp"
-	"log"
-	"runtime/debug"
 	"github.com/dot5enko/gobase/errors"
+	"github.com/streadway/amqp"
+	"runtime/debug"
 )
 
 type Consumer struct {
@@ -12,14 +11,34 @@ type Consumer struct {
 
 	deliveries      <-chan amqp.Delivery
 	responseHandler DeliveryChannelHandler
+	finishedCb      func()
+}
+
+func (c *Consumer) OnCompleted(cb func()) {
+	c.finishedCb = cb
 }
 
 func (c Consumer) Start() {
+
+	defer func() {
+		recov := recover()
+		if recov != nil {
+
+			errVal, ok := recov.(error)
+			if ok {
+				c.ErrorNotifier.Notify(errors.CausedError(errVal, "Got error  while executing finish callback for consumer"))
+			} else {
+				c.ErrorNotifier.Notify(errors.BasicError("Got error  while executing finish callback for consumer: %v", recov))
+			}
+
+		}
+	}()
+
 	var err error
 	for {
 		err = eventHandlerWithRecovery(c.deliveries, c.responseHandler)
 		if err == nil {
-			log.Printf("consumer finished ")
+			c.finishedCb()
 			return
 		} else {
 			c.Notify(errors.CausedError(err, "got a recovery on consumer"))
