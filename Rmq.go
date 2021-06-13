@@ -3,10 +3,10 @@ package microconn
 import (
 	"crypto/md5"
 	"fmt"
+	"github.com/dot5enko/gobase/errors"
 	"github.com/google/uuid"
 	"github.com/streadway/amqp"
 	"log"
-	"github.com/dot5enko/gobase/errors"
 )
 
 type Rmq struct {
@@ -59,6 +59,33 @@ func (receiver *Rmq) Connect(config RmqConfig) error {
 	}
 
 	return nil
+}
+
+func (receiver *Rmq) ConsumeDirect(consumerName, from string, responseHandler DeliveryChannelHandler) (err error, con Consumer) {
+
+	_, err = receiver.channel.QueueDeclare(consumerName, false, true, true, true, nil)
+	if err != nil {
+		err = errors.CausedError(err, "Unable to create a queue to consume from `%s`", from)
+		return
+	} else {
+		err = receiver.channel.QueueBind(consumerName, consumerName, from, true, nil)
+		if err != nil {
+			err = errors.CausedError(err, "Unable to bind a queue")
+			return
+		}
+	}
+	var deliveries <-chan amqp.Delivery
+	deliveries, err = receiver.channel.Consume(consumerName, consumerName, receiver.config.AutoAck, true, false, false, nil)
+	if err != nil {
+		err = errors.CausedError(err, "Unable to start consuming")
+		return
+	}
+
+	con.SetNotifier(receiver.notifier)
+	con.deliveries = deliveries
+	con.responseHandler = responseHandler
+
+	return
 }
 
 func (receiver *Rmq) ConsumeAs(consumerName, from string, responseHandler DeliveryChannelHandler) (err error, con Consumer) {
