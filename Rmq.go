@@ -6,7 +6,6 @@ import (
 	"github.com/dot5enko/gobase/errors"
 	"github.com/google/uuid"
 	"github.com/streadway/amqp"
-	"log"
 )
 
 type Rmq struct {
@@ -127,12 +126,6 @@ func (receiver *Rmq) SendTo(exchange string, routingKey string, bytes []byte) er
 		receiver.config.MandatorySend,
 		receiver.config.ImmediateSend, msg,
 	)
-
-	if result != nil {
-		log.Printf("Error sending message to exchange `%s`", exchange)
-	} else {
-		log.Printf("successfully sent a message to exchange `%s`: %s", exchange, routingKey)
-	}
 
 	return result
 }
