@@ -16,6 +16,22 @@ type Rmq struct {
 	notifier func(err error)
 	config   RmqConfig
 	subid    string
+
+	Options RmqOptions
+}
+
+var DefaultRmqOptions RmqOptions = RmqOptions{ReplyTo: ""}
+
+func New() Rmq {
+	result := Rmq{}
+
+	result.Options = DefaultRmqOptions
+
+	return result
+}
+
+type RmqOptions struct {
+	ReplyTo string
 }
 
 type RmqConfig struct {
@@ -120,6 +136,13 @@ func (receiver *Rmq) SendTo(exchange string, routingKey string, bytes []byte) er
 
 	msg := amqp.Publishing{
 		Body: bytes,
+	}
+
+	// todo use more performant way of doing this:
+	// make a  publishing once, and then just substitute Body bytes
+
+	if receiver.Options.ReplyTo != "" {
+		msg.ReplyTo = receiver.Options.ReplyTo
 	}
 
 	result := receiver.channel.Publish(exchange, routingKey,
