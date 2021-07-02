@@ -29,7 +29,7 @@ func (c *Consumer) ConsumeInternal() (err error) {
 	return
 }
 
-func (c Consumer) Start() {
+func (c Consumer) Start() (err error) {
 
 	defer func() {
 		recov := recover()
@@ -45,14 +45,17 @@ func (c Consumer) Start() {
 		}
 	}()
 
-	c.ConsumeInternal()
-
+	err = c.ConsumeInternal()
+	if err != nil {
+		return
+	}
 	//var err error
 
 	for x := range c.deliveries {
 		c.responseHandler(x)
 	}
 	c.finishedCb()
+	return
 
 	//for {
 	//err = eventHandlerWithRecovery(c.deliveries,)
