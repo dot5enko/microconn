@@ -59,7 +59,7 @@ func (c Consumer) Start() {
 			} else {
 				err = c.ConsumeInternal()
 				if err != nil {
-					log.Printf("Unable to reconnect. consumer finished explicitly")
+					log.Printf("Unable to reconnect. consumer finished explicitly: %s",err.Error())
 					break
 				}
 				// reconnection handling
