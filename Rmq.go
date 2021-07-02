@@ -46,6 +46,7 @@ type RmqConfig struct {
 }
 
 type DeliveryChannelHandler func(delivery <-chan amqp.Delivery)
+type DeliveryHandler func(delivery amqp.Delivery)
 
 func (receiver *Rmq) RawHandle() *amqp.Connection {
 	return receiver.amqp
@@ -78,7 +79,7 @@ func (receiver *Rmq) Connect(config RmqConfig) error {
 	return nil
 }
 
-func (receiver *Rmq) ConsumeDirect(consumerName, from string, responseHandler DeliveryChannelHandler) (err error, con Consumer) {
+func (receiver *Rmq) ConsumeDirect(consumerName, from string, responseHandler DeliveryHandler) (err error, con Consumer) {
 
 	_, err = receiver.channel.QueueDeclare(consumerName, false, true, true, true, nil)
 	if err != nil {
@@ -91,21 +92,18 @@ func (receiver *Rmq) ConsumeDirect(consumerName, from string, responseHandler De
 			return
 		}
 	}
-	var deliveries <-chan amqp.Delivery
-	deliveries, err = receiver.channel.Consume(consumerName, consumerName, receiver.config.AutoAck, true, false, false, nil)
-	if err != nil {
-		err = errors.CausedError(err, "Unable to start consuming")
-		return
-	}
+
+	con.consumerName = consumerName
+	con.channel = receiver.channel
+	con.config = receiver.config
 
 	con.SetNotifier(receiver.notifier)
-	con.deliveries = deliveries
 	con.responseHandler = responseHandler
 
 	return
 }
 
-func (receiver *Rmq) ConsumeAs(consumerName, from string, responseHandler DeliveryChannelHandler) (err error, con Consumer) {
+func (receiver *Rmq) ConsumeAs(consumerName, from string, responseHandler DeliveryHandler) (err error, con Consumer) {
 
 	_, err = receiver.channel.QueueDeclare(consumerName, true, false, false, true, nil)
 	if err != nil {
@@ -118,15 +116,13 @@ func (receiver *Rmq) ConsumeAs(consumerName, from string, responseHandler Delive
 			return
 		}
 	}
-	var deliveries <-chan amqp.Delivery
-	deliveries, err = receiver.channel.Consume(consumerName, consumerName, receiver.config.AutoAck, true, false, false, nil)
-	if err != nil {
-		err = errors.CausedError(err, "Unable to start consuming")
-		return
-	}
 
+	con.consumerName = consumerName
+	con.channel = receiver.channel
+	con.config = receiver.config
+
+	// todo get rid of this
 	con.SetNotifier(receiver.notifier)
-	con.deliveries = deliveries
 	con.responseHandler = responseHandler
 
 	return
