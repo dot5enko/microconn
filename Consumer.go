@@ -3,7 +3,7 @@ package microconn
 import (
 	"github.com/dot5enko/gobase/errors"
 	"github.com/streadway/amqp"
-	"runtime/debug"
+	//"runtime/debug"
 )
 
 type Consumer struct {
@@ -47,7 +47,7 @@ func (c Consumer) Start() {
 
 	c.ConsumeInternal()
 
-	var err error
+	//var err error
 
 	for x := range c.deliveries {
 		c.responseHandler(x)
@@ -65,17 +65,17 @@ func (c Consumer) Start() {
 	//}
 }
 
-func eventHandlerWithRecovery(deliveries <-chan amqp.Delivery, rhandler DeliveryHandler) (err error) {
-
-	defer func() {
-		if x := recover(); x != nil {
-			debug.PrintStack()
-			err = errors.BasicError("Recovered event handling routine : %v", x)
-		}
-	}()
-
-	rhandler(deliveries)
-
-	return
-
-}
+//func eventHandlerWithRecovery(deliveries <-chan amqp.Delivery, rhandler DeliveryHandler) (err error) {
+//
+//	defer func() {
+//		if x := recover(); x != nil {
+//			debug.PrintStack()
+//			err = errors.BasicError("Recovered event handling routine : %v", x)
+//		}
+//	}()
+//
+//	rhandler(deliveries)
+//
+//	return
+//
+//}
