@@ -5,6 +5,7 @@ import (
 	"github.com/streadway/amqp"
 	"log"
 	"runtime/debug"
+	"time"
 )
 
 type Consumer struct {
@@ -57,9 +58,11 @@ func (c Consumer) Start() {
 			if err == nil {
 				c.finishedCb()
 			} else {
+				// todo modify it via config
+				time.Sleep(time.Second)
 				err = c.ConsumeInternal()
 				if err != nil {
-					log.Printf("Unable to reconnect. consumer finished explicitly: %s",err.Error())
+					log.Printf("Unable to reconnect. consumer finished explicitly: %s", err.Error())
 					break
 				}
 				// reconnection handling

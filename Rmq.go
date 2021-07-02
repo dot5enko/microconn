@@ -7,7 +7,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/streadway/amqp"
 )
-
 type Rmq struct {
 	errors.ErrorNotifier
 
@@ -41,9 +40,10 @@ type RmqConfig struct {
 	Username string `json:"username"`
 	Password string `json:"password"`
 
-	ImmediateSend bool `json:"immediate_send"`
-	MandatorySend bool `json:"mandatory_send"`
-	AutoAck       bool `json:"auto_ack"`
+	ImmediateSend         bool `json:"immediate_send"`
+	MandatorySend         bool `json:"mandatory_send"`
+	AutoAck               bool `json:"auto_ack"`
+	//ReconnectDelaySeconds int  `json:"reconnect_delay_sec"`
 }
 
 type DeliveryChannelHandler func(delivery <-chan amqp.Delivery)
