@@ -3,9 +3,7 @@ package microconn
 import (
 	"github.com/dot5enko/gobase/errors"
 	"github.com/streadway/amqp"
-	"log"
 	"runtime/debug"
-	"time"
 )
 
 type Consumer struct {
@@ -47,44 +45,27 @@ func (c Consumer) Start() {
 		}
 	}()
 
-	onClose := c.channel.NotifyClose(make(chan *amqp.Error))
 	c.ConsumeInternal()
 
 	var err error
 
-	for {
-		select {
-		case err = <-onClose:
-			if err == nil {
-				c.finishedCb()
-			} else {
-				// todo modify it via config
-				time.Sleep(time.Second)
-				err = c.ConsumeInternal()
-				if err != nil {
-					log.Printf("Unable to reconnect. consumer finished explicitly: %s", err.Error())
-					break
-				}
-				// reconnection handling
-			}
-		case del := <-c.deliveries:
-			// todo recover
-			c.responseHandler(del)
-		}
+	for x := range c.deliveries {
+		c.responseHandler(x)
 	}
+	c.finishedCb()
 
 	//for {
-	//	err = eventHandlerWithRecovery(c.deliveries, c.responseHandler)
-	//	if err == nil {
-	//		c.finishedCb()
-	//		return
-	//	} else {
-	//		c.Notify(errors.CausedError(err, "got a recovery on consumer"))
-	//	}
+	//err = eventHandlerWithRecovery(c.deliveries,)
+	//if err == nil {
+	//	c.finishedCb()
+	//	return
+	//} else {
+	//	c.Notify(errors.CausedError(err, "got a recovery on consumer"))
+	//}
 	//}
 }
 
-func eventHandlerWithRecovery(deliveries <-chan amqp.Delivery, rhandler DeliveryChannelHandler) (err error) {
+func eventHandlerWithRecovery(deliveries <-chan amqp.Delivery, rhandler DeliveryHandler) (err error) {
 
 	defer func() {
 		if x := recover(); x != nil {
