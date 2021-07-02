@@ -17,7 +17,8 @@ type Rmq struct {
 	config   RmqConfig
 	subid    string
 
-	Options RmqOptions
+	Options       RmqOptions
+	closeNotifier func(err *amqp.Error)
 }
 
 var DefaultRmqOptions RmqOptions = RmqOptions{ReplyTo: ""}
@@ -76,7 +77,23 @@ func (receiver *Rmq) Connect(config RmqConfig) error {
 		return errors.CausedError(err, "Unable to create channel")
 	}
 
+	if receiver.closeNotifier != nil {
+		go func() {
+			notifier := receiver.channel.NotifyClose(make(chan *amqp.Error))
+			not := <-notifier
+
+			if not != nil {
+				if receiver.closeNotifier != nil {
+					receiver.closeNotifier(not)
+				}
+			}
+		}()
+	}
+
 	return nil
+}
+func (receiver *Rmq) OnConnClose(cb func(err *amqp.Error)) {
+	receiver.closeNotifier = cb
 }
 
 func (receiver *Rmq) ConsumeDirect(consumerName, from string, responseHandler DeliveryHandler) (err error, con Consumer) {
