@@ -8,7 +8,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/streadway/amqp"
 )
-
 type Rmq struct {
 	errors.ErrorNotifier
 
@@ -18,7 +17,8 @@ type Rmq struct {
 	config   RmqConfig
 	subid    string
 
-	Options RmqOptions
+	Options       RmqOptions
+	closeNotifier func(err *amqp.Error)
 }
 
 var DefaultRmqOptions RmqOptions = RmqOptions{ReplyTo: ""}
@@ -42,12 +42,14 @@ type RmqConfig struct {
 	Password string `json:"password"`
 	Vhost    string `json:"vhost"`
 
-	ImmediateSend bool `json:"immediate_send"`
-	MandatorySend bool `json:"mandatory_send"`
-	AutoAck       bool `json:"auto_ack"`
+	ImmediateSend         bool `json:"immediate_send"`
+	MandatorySend         bool `json:"mandatory_send"`
+	AutoAck               bool `json:"auto_ack"`
+	//ReconnectDelaySeconds int  `json:"reconnect_delay_sec"`
 }
 
 type DeliveryChannelHandler func(delivery <-chan amqp.Delivery)
+type DeliveryHandler func(delivery amqp.Delivery)
 
 func (receiver *Rmq) RawHandle() *amqp.Connection {
 	return receiver.amqp
@@ -78,10 +80,26 @@ func (receiver *Rmq) Connect(config RmqConfig) error {
 		return errors.CausedError(err, "Unable to create channel")
 	}
 
+	if receiver.closeNotifier != nil {
+		go func() {
+			notifier := receiver.channel.NotifyClose(make(chan *amqp.Error))
+			not := <-notifier
+
+			if not != nil {
+				if receiver.closeNotifier != nil {
+					receiver.closeNotifier(not)
+				}
+			}
+		}()
+	}
+
 	return nil
 }
+func (receiver *Rmq) OnConnClose(cb func(err *amqp.Error)) {
+	receiver.closeNotifier = cb
+}
 
-func (receiver *Rmq) ConsumeDirect(consumerName, from string, responseHandler DeliveryChannelHandler) (err error, con Consumer) {
+func (receiver *Rmq) ConsumeDirect(consumerName, from string, responseHandler DeliveryHandler) (err error, con Consumer) {
 
 	_, err = receiver.channel.QueueDeclare(consumerName, false, true, true, true, nil)
 	if err != nil {
@@ -94,21 +112,18 @@ func (receiver *Rmq) ConsumeDirect(consumerName, from string, responseHandler De
 			return
 		}
 	}
-	var deliveries <-chan amqp.Delivery
-	deliveries, err = receiver.channel.Consume(consumerName, consumerName, receiver.config.AutoAck, true, false, false, nil)
-	if err != nil {
-		err = errors.CausedError(err, "Unable to start consuming")
-		return
-	}
+
+	con.consumerName = consumerName
+	con.channel = receiver.channel
+	con.config = receiver.config
 
 	con.SetNotifier(receiver.notifier)
-	con.deliveries = deliveries
 	con.responseHandler = responseHandler
 
 	return
 }
 
-func (receiver *Rmq) ConsumeAs(consumerName, from string, responseHandler DeliveryChannelHandler) (err error, con Consumer) {
+func (receiver *Rmq) ConsumeAs(consumerName, from string, responseHandler DeliveryHandler) (err error, con Consumer) {
 
 	_, err = receiver.channel.QueueDeclare(consumerName, true, false, false, true, nil)
 	if err != nil {
@@ -121,15 +136,13 @@ func (receiver *Rmq) ConsumeAs(consumerName, from string, responseHandler Delive
 			return
 		}
 	}
-	var deliveries <-chan amqp.Delivery
-	deliveries, err = receiver.channel.Consume(consumerName, consumerName, receiver.config.AutoAck, true, false, false, nil)
-	if err != nil {
-		err = errors.CausedError(err, "Unable to start consuming")
-		return
-	}
 
+	con.consumerName = consumerName
+	con.channel = receiver.channel
+	con.config = receiver.config
+
+	// todo get rid of this
 	con.SetNotifier(receiver.notifier)
-	con.deliveries = deliveries
 	con.responseHandler = responseHandler
 
 	return
