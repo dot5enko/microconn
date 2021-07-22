@@ -3,6 +3,7 @@ package microconn
 import (
 	"crypto/md5"
 	"fmt"
+
 	"github.com/dot5enko/gobase/errors"
 	"github.com/google/uuid"
 	"github.com/streadway/amqp"
@@ -39,6 +40,7 @@ type RmqConfig struct {
 	Port     int    `json:"port"`
 	Username string `json:"username"`
 	Password string `json:"password"`
+	Vhost    string `json:"vhost"`
 
 	ImmediateSend bool `json:"immediate_send"`
 	MandatorySend bool `json:"mandatory_send"`
@@ -60,7 +62,7 @@ func (receiver *Rmq) Disconnect() error {
 func (receiver *Rmq) Connect(config RmqConfig) error {
 	receiver.config = config
 
-	url := fmt.Sprintf("amqp://%s:%s@%s:%d/", config.Username, config.Password, config.Host, config.Port)
+	url := fmt.Sprintf("amqp://%s:%s@%s:%d/%s", config.Username, config.Password, config.Host, config.Port, config.Vhost)
 	conn, err := amqp.Dial(url)
 
 	if err != nil {
