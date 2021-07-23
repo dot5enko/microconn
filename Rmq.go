@@ -133,11 +133,14 @@ func (receiver *Rmq) ConsumeAs(consumerName, from string, responseHandler Delive
 
 	return
 }
-
 func (receiver *Rmq) SendTo(exchange string, routingKey string, bytes []byte) error {
+	return receiver.SendToWithHeaders(exchange, routingKey, bytes, nil)
+}
+func (receiver *Rmq) SendToWithHeaders(exchange string, routingKey string, bytes []byte, headers map[string]interface{}) error {
 
 	msg := amqp.Publishing{
-		Body: bytes,
+		Body:    bytes,
+		Headers: headers,
 	}
 
 	// todo use more performant way of doing this:
