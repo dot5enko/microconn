@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/streadway/amqp"
 )
+
 type Rmq struct {
 	errors.ErrorNotifier
 
@@ -42,9 +43,9 @@ type RmqConfig struct {
 	Password string `json:"password"`
 	Vhost    string `json:"vhost"`
 
-	ImmediateSend         bool `json:"immediate_send"`
-	MandatorySend         bool `json:"mandatory_send"`
-	AutoAck               bool `json:"auto_ack"`
+	ImmediateSend bool `json:"immediate_send"`
+	MandatorySend bool `json:"mandatory_send"`
+	AutoAck       bool `json:"auto_ack"`
 	//ReconnectDelaySeconds int  `json:"reconnect_delay_sec"`
 }
 
@@ -149,9 +150,13 @@ func (receiver *Rmq) ConsumeAs(consumerName, from string, responseHandler Delive
 }
 
 func (receiver *Rmq) SendTo(exchange string, routingKey string, bytes []byte) error {
+	return receiver.SendToWithHeaders(exchange, routingKey, bytes, nil)
+}
+func (receiver *Rmq) SendToWithHeaders(exchange string, routingKey string, bytes []byte, headers map[string]interface{}) error {
 
 	msg := amqp.Publishing{
-		Body: bytes,
+		Body:    bytes,
+		Headers: headers,
 	}
 
 	// todo use more performant way of doing this:
